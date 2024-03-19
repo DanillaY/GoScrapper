@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
+	"github.com/DanillaY/GoScrapper/cmd/task"
 	"github.com/joho/godotenv"
 )
 
@@ -28,11 +29,10 @@ func main() {
 
 	db, err := repository.NewPostgresConnection(&config)
 	repo := repository.Repository{Db: db, Config: &config}
-	repo.InitAPIRoutes()
 
 	if err != nil {
 		fmt.Println("Error while creating new connection with database")
 	}
 
-	//task.ScrapeAllWebsites(config, repo.Db)
+	task.ScrapeAllWebsites(config, repo.Db)
 }
