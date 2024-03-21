@@ -1,19 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"github.com/DanillaY/GoScrapper/cmd/task"
+	slogger "github.com/jesse-rb/slogger-go"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	infoLogger := slogger.New(os.Stdout, slogger.ANSIMagenta, "info", log.Ldate)
+	errorLogger := slogger.New(os.Stderr, slogger.ANSIRed, "error", log.Lshortfile+log.Ldate)
 
 	err := godotenv.Load("./db.env")
+
 	if err != nil {
-		fmt.Println("Error while getting env data")
+		errorLogger.Log("main", "Error while getting env data", err.Error())
 	}
 
 	config := repository.Config{
@@ -28,11 +32,11 @@ func main() {
 	}
 
 	db, err := repository.NewPostgresConnection(&config)
-	repo := repository.Repository{Db: db, Config: &config}
+	repo := repository.Repository{Db: db, Config: &config, InfLog: infoLogger, ErrLog: errorLogger}
 
 	if err != nil {
-		fmt.Println("Error while creating new connection with database")
+		errorLogger.Log("main", "Error while creating new connection with database", err.Error())
 	}
 
-	task.ScrapeAllWebsites(config, repo.Db)
+	task.ScrapeDataFromVseSvobodny(repo)
 }

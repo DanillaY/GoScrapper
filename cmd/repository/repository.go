@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 
+	slogger "github.com/jesse-rb/slogger-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -10,6 +11,8 @@ import (
 type Repository struct {
 	Db     *gorm.DB
 	Config *Config
+	InfLog *slogger.Logger
+	ErrLog *slogger.Logger
 }
 
 func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {

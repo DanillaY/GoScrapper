@@ -1,10 +1,22 @@
 package task
 
 import (
-	db "github.com/DanillaY/GoScrapper/cmd/repository"
-	"gorm.io/gorm"
+	"github.com/DanillaY/GoScrapper/cmd/models"
+	"github.com/DanillaY/GoScrapper/cmd/repository"
 )
 
-func ScrapeAllWebsites(config db.Config, db *gorm.DB) {
-	ScrapeDataFromBook24(config, db)
+func ScrapeAllWebsites(repo repository.Repository) {
+
+	repo.Db.AutoMigrate(&models.Book{})
+
+	ScrapeDataFromBook24(repo)
+	ScrapeDataFromVseSvobodny(repo)
+}
+
+func CheckIfTheFieldExists(charBook map[string]string, key string) string {
+	val, exists := charBook[key]
+	if !exists {
+		val = ""
+	}
+	return val
 }

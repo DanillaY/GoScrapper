@@ -1,31 +1,28 @@
 package task
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
-	db "github.com/DanillaY/GoScrapper/cmd/repository"
+	"github.com/DanillaY/GoScrapper/cmd/repository"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
-	"gorm.io/gorm"
 )
 
-func ScrapeDataFromBook24(config db.Config, db *gorm.DB) {
-
-	db.AutoMigrate(&models.Book{})
+func ScrapeDataFromBook24(r repository.Repository) {
 
 	c := colly.NewCollector(colly.Async(true))
 	c.SetRequestTimeout(time.Minute * 20)
-	//c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 	pageToScrape := "https://book24.ru/catalog/"
 	replacer := strings.NewReplacer("\n", "", "\t", "")
-	re := regexp.MustCompile("[0-9]+")
+	regex := regexp.MustCompile("[0-9]+")
 	vendor := "https://book24.ru"
 
 	c.OnHTML("div.product-detail-page__body", func(c *colly.HTMLElement) {
@@ -39,14 +36,14 @@ func ScrapeDataFromBook24(config db.Config, db *gorm.DB) {
 
 		if len(currPrice) > 0 {
 
-			oldPriceArr := re.FindAllString(strings.Replace(oldPrice, " ", "", -1), -1)
-			currPriceArr := re.FindAllString(strings.Replace(currPrice, " ", "", -1), -1)
+			oldPriceArr := regex.FindAllString(strings.Replace(oldPrice, " ", "", -1), -1)
+			currPriceArr := regex.FindAllString(strings.Replace(currPrice, " ", "", -1), -1)
 
 			if len(oldPriceArr) > 0 {
-				oldPrice = re.FindAllString(strings.Replace(oldPrice, " ", "", -1), -1)[0]
+				oldPrice = regex.FindAllString(strings.Replace(oldPrice, " ", "", -1), -1)[0]
 			}
 			if len(currPriceArr) > 0 {
-				currPrice = re.FindAllString(strings.Replace(currPrice, " ", "", -1), -1)[0]
+				currPrice = regex.FindAllString(strings.Replace(currPrice, " ", "", -1), -1)[0]
 			}
 		}
 
@@ -79,21 +76,21 @@ func ScrapeDataFromBook24(config db.Config, db *gorm.DB) {
 				ImgPath:          imgPath,
 				PageBookPath:     vendor + c.Request.URL.Path,
 				Vendor:           vendor,
-				Author:           checkIfTheFieldExists(characteristicsBook, "Автор"),
-				Translator:       checkIfTheFieldExists(characteristicsBook, "Переводчик"),
-				ProductionSeries: checkIfTheFieldExists(characteristicsBook, "Серия"),
-				Category:         checkIfTheFieldExists(characteristicsBook, "Раздел"),
-				Publisher:        checkIfTheFieldExists(characteristicsBook, "Издательство"),
-				ISBN:             checkIfTheFieldExists(characteristicsBook, "ISBN"),
-				AgeRestriction:   checkIfTheFieldExists(characteristicsBook, "Возрастное ограничение"),
-				YearPublish:      checkIfTheFieldExists(characteristicsBook, "Год издания"),
-				PagesQuantity:    checkIfTheFieldExists(characteristicsBook, "Количество страниц"),
-				BookCover:        checkIfTheFieldExists(characteristicsBook, "Переплет"),
-				Format:           checkIfTheFieldExists(characteristicsBook, "Формат"),
-				Weight:           checkIfTheFieldExists(characteristicsBook, "Вес"),
+				Author:           CheckIfTheFieldExists(characteristicsBook, "Автор"),
+				Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
+				ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
+				Category:         CheckIfTheFieldExists(characteristicsBook, "Раздел"),
+				Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
+				ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
+				AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастное ограничение"),
+				YearPublish:      CheckIfTheFieldExists(characteristicsBook, "Год издания"),
+				PagesQuantity:    CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
+				BookCover:        CheckIfTheFieldExists(characteristicsBook, "Переплет"),
+				Format:           CheckIfTheFieldExists(characteristicsBook, "Формат"),
+				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес"),
 				BookAbout:        about,
 			}
-			db.Create(&book)
+			r.Db.Create(&book)
 		}
 	})
 	c.OnHTML("div.product-card__image-holder", func(e *colly.HTMLElement) {
@@ -106,25 +103,13 @@ func ScrapeDataFromBook24(config db.Config, db *gorm.DB) {
 		}
 	})
 
-	c.OnScraped(func(response *colly.Response) {
-
+	c.OnRequest(func(resp *colly.Request) {
+		r.InfLog.Log("book24", "Visiting: ", resp.URL)
 	})
-
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
-	})
-	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println("Could not get param: " + err.Error())
+	c.OnError(func(resp *colly.Response, err error) {
+		r.ErrLog.Log("book24", "Error while parsing web page", err.Error())
 	})
 
 	c.Visit(pageToScrape)
 	c.Wait()
-}
-
-func checkIfTheFieldExists(charBook map[string]string, key string) string {
-	val, exists := charBook[key]
-	if !exists {
-		val = ""
-	}
-	return val
 }
