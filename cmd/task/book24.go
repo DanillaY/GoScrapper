@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
@@ -13,7 +14,7 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
-func ScrapeDataFromBook24(r repository.Repository) {
+func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 
 	c := colly.NewCollector(colly.Async(true))
 	c.SetRequestTimeout(time.Minute * 20)
@@ -52,22 +53,21 @@ func ScrapeDataFromBook24(r repository.Repository) {
 
 		c.DOM.Find("div.product-characteristic__item").Each(func(i int, s *goquery.Selection) {
 
-			if len(s.Text()) > 0 {
-				lines := strings.Split(strings.TrimSpace(s.Text()), "\n")
+			lines := strings.Split(strings.TrimSpace(s.Text()), "\n")
 
-				if len(lines) > 0 {
-					//key examples -> Автор, Серия, Переводчик
-					key := strings.Split(lines[0], ":")[0]
-					//value examples -> Ричард Бротиган, Романы-бротиганы, Гуревич Фаина
-					value := strings.TrimSpace(strings.Split(lines[0], ":")[1])
-					characteristicsBook[key] = value
-				}
+			if len(lines) > 0 {
+				//key examples -> Автор, Серия, Переводчик
+				key := strings.Split(lines[0], ":")[0]
+				//value examples -> Ричард Бротиган, Романы-бротиганы, Гуревич Фаина
+				value := strings.TrimSpace(strings.Split(lines[0], ":")[1])
+				characteristicsBook[key] = value
 			}
+
 		})
 		numberCurrPrice, errCurr := strconv.Atoi(currPrice)
 		numberOldPrice, errOld := strconv.Atoi(oldPrice)
 
-		if imgPath != "" && errCurr == nil && errOld == nil {
+		if imgPath != "" && errCurr == nil && errOld == nil && CheckIfTheFieldExists(characteristicsBook, "Автор") != "" {
 
 			book := models.Book{
 				CurrentPrice:     numberCurrPrice,
@@ -112,4 +112,5 @@ func ScrapeDataFromBook24(r repository.Repository) {
 
 	c.Visit(pageToScrape)
 	c.Wait()
+	waitgroup.Done()
 }
