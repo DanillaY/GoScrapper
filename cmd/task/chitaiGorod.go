@@ -21,8 +21,8 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 	c.SetRequestTimeout(time.Minute * 20)
 	c.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Parallelism: 100,
-		RandomDelay: 200 * time.Millisecond,
+		Parallelism: 13,
+		RandomDelay: 250 * time.Millisecond,
 	})
 
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"

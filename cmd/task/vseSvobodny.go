@@ -22,8 +22,8 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 
 	c.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Parallelism: 100,
-		RandomDelay: 300 * time.Millisecond,
+		Parallelism: 20,
+		RandomDelay: 280 * time.Millisecond,
 	})
 
 	vendor := "https://vse-svobodny.com/"

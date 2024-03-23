@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+
 	infoLogger := slogger.New(os.Stdout, slogger.ANSIMagenta, "info", log.Ldate)
 	errorLogger := slogger.New(os.Stderr, slogger.ANSIRed, "error", log.Lshortfile+log.Ldate)
 
