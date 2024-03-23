@@ -9,9 +9,6 @@ import (
 
 func ScrapeAllWebsites(repo repository.Repository) {
 
-	repo.Db.Exec("ALTER SEQUENCE books_id_seq RESTART;")
-	repo.Db.Exec("TRUNCATE TABLE books;")
-
 	repo.Db.AutoMigrate(&models.Book{})
 
 	waitgroup := &sync.WaitGroup{}

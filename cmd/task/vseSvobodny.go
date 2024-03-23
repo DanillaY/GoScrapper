@@ -23,7 +23,7 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 	c.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Parallelism: 20,
-		RandomDelay: 280 * time.Millisecond,
+		RandomDelay: 230 * time.Millisecond,
 	})
 
 	vendor := "https://vse-svobodny.com/"
@@ -98,7 +98,8 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 					BookCover:     CheckIfTheFieldExists(characteristicsBook, "Переплёт"),
 					BookAbout:     strings.TrimSpace(about),
 				}
-				r.Db.Create(&book)
+
+				r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 			}
 		})
 

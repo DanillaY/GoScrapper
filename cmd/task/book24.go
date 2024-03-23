@@ -90,7 +90,7 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес"),
 				BookAbout:        about,
 			}
-			r.Db.Create(&book)
+			r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 		}
 	})
 	c.OnHTML("div.product-card__image-holder", func(e *colly.HTMLElement) {

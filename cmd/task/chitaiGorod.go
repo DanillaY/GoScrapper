@@ -121,7 +121,7 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
 				BookAbout:        strings.TrimSpace(about),
 			}
-			r.Db.Create(&book)
+			r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 		}
 	})
 
