@@ -57,71 +57,76 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 
 	c.OnHTML("html", func(h *colly.HTMLElement) {
 
-		oldPrice := formatPrice(regex, h, r, "span.product-offer-price__old-price")
-		currPrice := formatPrice(regex, h, r, "span.product-offer-price__current")
+		if strings.Contains(h.Request.URL.String(), "product") {
+			oldPrice := formatPrice(regex, h, r, "span.product-offer-price__old-price")
+			currPrice := formatPrice(regex, h, r, "span.product-offer-price__current")
 
-		title := strings.TrimSpace(h.DOM.Find("h1.detail-product__header-title").Text())
-		author := ""
-		imgPath := ""
+			title := strings.TrimSpace(h.DOM.Find("h1.detail-product__header-title").Text())
+			author := ""
+			imgPath := ""
 
-		h.DOM.Find("meta").Each(func(i int, s *goquery.Selection) {
-			attr, exist := s.Attr("name")
+			h.DOM.Find("meta").Each(func(i int, s *goquery.Selection) {
+				attr, exist := s.Attr("name")
 
-			if attr == "og:image" && exist {
-				imgPath = s.AttrOr("content", "")
-			}
-			if attr == "og:author" && exist {
-				author = s.AttrOr("content", "")
-			}
-		})
-
-		bookPath := h.Request.URL.String()
-
-		characteristicsBook := make(map[string]string)
-
-		h.DOM.Find("div.product-detail-features__item").Each(func(i int, s *goquery.Selection) {
-			lines := strings.Split(strings.TrimSpace(s.Text()), "\n")
-			keyValue := strings.Fields(strings.Join(lines, ""))
-
-			doubleWordsKey := []string{"Количество", "Тип", "Год", "Возрастные", "Вес", "Вес,"}
-
-			if len(keyValue) >= 2 && len(s.Text()) > 0 && len(lines) > 0 {
-
-				if slices.Contains(doubleWordsKey, keyValue[0]) {
-					characteristicsBook[keyValue[0]+" "+keyValue[1]] = keyValue[2]
-				} else {
-					characteristicsBook[keyValue[0]] = strings.Join(keyValue[1:], " ")
+				if attr == "og:image" && exist {
+					imgPath = s.AttrOr("content", "")
 				}
+				if attr == "og:author" && exist {
+					author = s.AttrOr("content", "")
+				}
+			})
+
+			category := strings.Fields(h.DOM.Find("ul.product-breadcrumbs, detail-product__breadcrumbs").Text())
+			category = slices.Compact(category)
+
+			bookPath := h.Request.URL.String()
+
+			characteristicsBook := make(map[string]string)
+
+			h.DOM.Find("div.product-detail-features__item").Each(func(i int, s *goquery.Selection) {
+				lines := strings.Split(strings.TrimSpace(s.Text()), "\n")
+				keyValue := strings.Fields(strings.Join(lines, ""))
+
+				doubleWordsKey := []string{"Количество", "Тип", "Год", "Возрастные", "Вес", "Вес,"}
+
+				if len(keyValue) >= 2 && len(s.Text()) > 0 && len(lines) > 0 {
+
+					if slices.Contains(doubleWordsKey, keyValue[0]) {
+						characteristicsBook[keyValue[0]+" "+keyValue[1]] = keyValue[2]
+					} else {
+						characteristicsBook[keyValue[0]] = strings.Join(keyValue[1:], " ")
+					}
+				}
+
+			})
+
+			about := strings.TrimSpace(h.DOM.Find("article.detail-description__text").Text())
+			about = strings.Replace(about, "\t", "", -1)
+
+			if about != "" && currPrice != 0 && title != "" && bookPath != "" && len(category) > 1 {
+				book := models.Book{
+					CurrentPrice:     currPrice,
+					OldPrice:         oldPrice,
+					Title:            strings.TrimSpace(title),
+					ImgPath:          imgPath,
+					PageBookPath:     bookPath,
+					Vendor:           vendor,
+					Category:         strings.Join(category[1:], " "),
+					Author:           author,
+					Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
+					ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
+					Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
+					ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
+					AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
+					YearPublish:      CheckIfTheFieldExists(characteristicsBook, "Год издания"),
+					PagesQuantity:    CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
+					BookCover:        CheckIfTheFieldExists(characteristicsBook, "Тип обложки"),
+					Format:           CheckIfTheFieldExists(characteristicsBook, "Размер"),
+					Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
+					BookAbout:        strings.TrimSpace(about),
+				}
+				r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 			}
-
-		})
-
-		about := strings.TrimSpace(h.DOM.Find("article.detail-description__text").Text())
-		about = strings.Replace(about, "\t", "", -1)
-
-		if about != "" && currPrice != 0 && title != "" && bookPath != "" {
-			book := models.Book{
-				CurrentPrice:     currPrice,
-				OldPrice:         oldPrice,
-				Title:            strings.TrimSpace(title),
-				ImgPath:          imgPath,
-				PageBookPath:     bookPath,
-				Vendor:           vendor,
-				Category:         "",
-				Author:           author,
-				Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
-				ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
-				Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
-				ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
-				AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
-				YearPublish:      CheckIfTheFieldExists(characteristicsBook, "Год издания"),
-				PagesQuantity:    CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
-				BookCover:        CheckIfTheFieldExists(characteristicsBook, "Тип обложки"),
-				Format:           CheckIfTheFieldExists(characteristicsBook, "Размер"),
-				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
-				BookAbout:        strings.TrimSpace(about),
-			}
-			r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 		}
 	})
 

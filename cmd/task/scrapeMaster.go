@@ -12,20 +12,17 @@ func ScrapeAllWebsites(repo repository.Repository) {
 	repo.Db.AutoMigrate(&models.Book{})
 
 	waitgroup := &sync.WaitGroup{}
-	waitgroup.Add(3)
+	waitgroup.Add(5)
 
 	go ScrapeDataFromBook24(repo, waitgroup)
 	go ScrapeDataFromVseSvobodny(repo, waitgroup)
 	go ScrapeDataFromChitaiGorod(repo, waitgroup)
+	go ScrapeDataFromRespulica(repo, waitgroup)
+	go ScrapeDataFromLabirint(repo, waitgroup)
 	waitgroup.Wait()
 }
 
-/*
-
-	Bellow are common methods that are used in couple of parsers
-
-*/
-
+// common method that is used in a couple of parsers
 func CheckIfTheFieldExists(charBook map[string]string, key string) (value string) {
 	val, exists := charBook[key]
 	if !exists {
