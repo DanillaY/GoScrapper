@@ -1,6 +1,7 @@
 package task
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
@@ -29,4 +30,11 @@ func CheckIfTheFieldExists(charBook map[string]string, key string) (value string
 		val = ""
 	}
 	return val
+}
+
+func SafeSplit(str string, separator string) string {
+	if strings.Contains(str, separator) {
+		str = strings.Split(str, separator)[1]
+	}
+	return str
 }

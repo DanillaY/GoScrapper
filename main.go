@@ -38,8 +38,6 @@ func main() {
 	if err != nil {
 		errorLogger.Log("main", "Error while creating new connection with database", err.Error())
 	}
-	//waitgroup := &sync.WaitGroup{}
-	//waitgroup.Add(1)
 
 	task.ScrapeAllWebsites(repo)
 }

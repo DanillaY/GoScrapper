@@ -20,15 +20,16 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 	c.SetRequestTimeout(time.Minute * 20)
 	c.Limit(&colly.LimitRule{
 		Parallelism: 20,
-		RandomDelay: 250 * time.Millisecond,
+		RandomDelay: 220 * time.Millisecond,
 	})
+	c.AllowURLRevisit = false
 
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 	pageToScrape := "https://www.respublica.ru/knigi?page=1"
 	vendor := "https://www.respublica.ru"
-	reg := regexp.MustCompile("[0-9]+")
+	regNumbers := regexp.MustCompile("[0-9]+")
 	priceTrim := strings.NewReplacer("\n", "", "\t", "", " ", "", " ", "")
-	replacer := strings.NewReplacer(
+	replacerAttr := strings.NewReplacer(
 		"title", `"title"`,
 		"values", `"values"`,
 		"url", `"url"`,
@@ -62,6 +63,8 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 		":i", `:"i"`,
 		":X", `:"X"`,
 		":L", `:"L"`,
+		":K", `:"K"`,
+		":Z", `:"Z"`,
 	)
 
 	c.OnHTML("a.pages-nav-link", func(h *colly.HTMLElement) {
@@ -76,32 +79,32 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 	//Fill book data and save to db
 	c.OnHTML("html", func(h *colly.HTMLElement) {
 		title := strings.TrimSpace(h.DOM.Find("h1.text-2xl, font-medium, text-gray-700, pb-3").Text())
-		currPrice := priceTrim.Replace(h.DOM.Find("div.text-gray-700, font-medium, text-3xl").Text())
-		oldPrice := priceTrim.Replace(h.DOM.Find("span.line-through").Text())
-		about := h.DOM.Find("div.static-body").Text()
-		imgPath := ""
-		author := ""
-		isbn := ""
-		series := ""
-		pagesQuantity := ""
-		ageRestriction := ""
-		yearPublished := ""
-		bookCover := ""
-		weight := ""
 
-		scriptsJs := h.DOM.Find("script").Text()
-		if len(strings.Split(scriptsJs, "json_properties")) > 1 {
-			scriptsJs = strings.Split(scriptsJs, "json_properties")[1][1:]
+		if title != "" {
+			currPrice := priceTrim.Replace(h.DOM.Find("div.text-gray-700, font-medium, text-3xl").Text())
+			oldPrice := priceTrim.Replace(h.DOM.Find("span.line-through").Text())
+			about := h.DOM.Find("div.static-body").Text()
+			imgPath := ""
+			author := ""
+			isbn := ""
+			series := ""
+			pagesQuantity := ""
+			ageRestriction := ""
+			yearPublished := ""
+			bookCover := ""
+			weight := ""
+
+			scriptsJs := h.DOM.Find("script").Text()
+			scriptsJs = SafeSplit(scriptsJs, "json_properties")[1:]
 
 			jsonProductAttrs := strings.Split(scriptsJs, "}]}]")[0] + "}]}]"
-			jsonProductAttrs = replacer.Replace(jsonProductAttrs)
+			jsonProductAttrs = replacerAttr.Replace(jsonProductAttrs)
 
 			var items []jsonObj
 			err := json.Unmarshal([]byte(jsonProductAttrs), &items)
 
 			if err != nil {
 				r.ErrLog.Log("respublica", "Error while parsing json:", err)
-				return
 			}
 
 			for _, item := range items {
@@ -127,51 +130,51 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 					}
 
 				}
+
 			}
-		}
 
-		h.DOM.Find("meta").Each(func(i int, s *goquery.Selection) {
-			attr, exist := s.Attr("property")
+			h.DOM.Find("meta").Each(func(i int, s *goquery.Selection) {
+				attr, exist := s.Attr("property")
 
-			if exist {
-				switch attr {
-				case "og:image":
-					imgPath = s.AttrOr("content", "")
-				case "book:author":
-					author = s.AttrOr("content", "")
-				case "book:isbn":
-					if s.AttrOr("content", "") != "undefined" {
-						isbn = s.AttrOr("content", "")
+				if exist {
+					switch attr {
+					case "og:image":
+						imgPath = s.AttrOr("content", "")
+					case "book:author":
+						author = s.AttrOr("content", "")
+					case "book:isbn":
+						if s.AttrOr("content", "") != "undefined" {
+							isbn = s.AttrOr("content", "")
+						}
 					}
+
 				}
+			})
+			numberCurrPrice, errCurr := strconv.Atoi(regNumbers.FindString(currPrice))
+			numberOldPrice, _ := strconv.Atoi(regNumbers.FindString(oldPrice))
 
+			if currPrice != "" && imgPath != "" && errCurr == nil {
+
+				book := models.Book{
+					CurrentPrice:     numberCurrPrice,
+					OldPrice:         numberOldPrice,
+					Title:            strings.TrimSpace(title),
+					ImgPath:          imgPath,
+					PageBookPath:     vendor + h.Request.URL.Path,
+					Vendor:           vendor,
+					Author:           author,
+					ProductionSeries: series,
+					ISBN:             isbn,
+					AgeRestriction:   ageRestriction,
+					YearPublish:      yearPublished,
+					PagesQuantity:    pagesQuantity,
+					BookCover:        bookCover,
+					Weight:           weight,
+					BookAbout:        about,
+				}
+				r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 			}
-		})
-		numberCurrPrice, errCurr := strconv.Atoi(reg.FindString(currPrice))
-		numberOldPrice, _ := strconv.Atoi(reg.FindString(oldPrice))
-
-		if title != "" && currPrice != "" && imgPath != "" && errCurr == nil {
-
-			book := models.Book{
-				CurrentPrice:     numberCurrPrice,
-				OldPrice:         numberOldPrice,
-				Title:            strings.TrimSpace(title),
-				ImgPath:          imgPath,
-				PageBookPath:     vendor + h.Request.URL.Path,
-				Vendor:           vendor,
-				Author:           author,
-				ProductionSeries: series,
-				ISBN:             isbn,
-				AgeRestriction:   ageRestriction,
-				YearPublish:      yearPublished,
-				PagesQuantity:    pagesQuantity,
-				BookCover:        bookCover,
-				Weight:           weight,
-				BookAbout:        about,
-			}
-			r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
 		}
-
 	})
 
 	c.OnRequest(func(resp *colly.Request) {
