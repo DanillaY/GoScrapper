@@ -7,7 +7,8 @@ type Book struct {
 	Title            string
 	ImgPath          string
 	PageBookPath     string // absolute url of the book page example -> https://book24.ru/product/edinstvennyy-i-ego-sobstvennost-5386506/
-	Vendor           string // url of the site example -> https://book24.ru/
+	VendorURL        string // url of the site example -> https://book24.ru/
+	Vendor           string
 	Author           string
 	Translator       string
 	ProductionSeries string
