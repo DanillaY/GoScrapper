@@ -60,7 +60,7 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 
 		imgPath := h.DOM.Find("img.book-img-cover,entered, loaded").AttrOr("data-src", "")
 		productionSeries := h.DOM.Find("div.series a").Text()
-		catgeory := h.DOM.Find("div.genre a").Text()
+		catgeory := strings.ReplaceAll(h.DOM.Find("div.genre a").Text(), ",", " ")
 		publisher := h.DOM.Find("div.publisher a").Text()
 		yearPublish := strings.Join(regYear.FindAllString(h.DOM.Find("div.publisher").Text(), -1), "")
 		pageQuantity := strings.Join(regPages.FindAllString(h.DOM.Find("div.pages2").Text(), -1), "")

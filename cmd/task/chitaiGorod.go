@@ -112,7 +112,7 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 					PageBookPath:     bookPath,
 					VendorURL:        vendor,
 					Vendor:           "Читай город",
-					Category:         strings.Join(category[1:], " "),
+					Category:         strings.ReplaceAll(strings.Join(category[1:], " "), ",", " "),
 					Author:           author,
 					Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
 					ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),

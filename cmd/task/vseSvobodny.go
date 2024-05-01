@@ -60,7 +60,7 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 			title := h.DOM.Find("h1.product_title, entry-title").Text()
 			imgPath := h.DOM.Find("img.wp-post-image").AttrOr("src", "")
 			bookPath := h.DOM.Find("form.cart").AttrOr("action", "")
-			category := h.DOM.Find("span.posted_in").Text()
+			category := strings.ReplaceAll(h.DOM.Find("span.posted_in").Text(), ",", " ")
 
 			if strings.Contains(category, ":") {
 				category = strings.TrimSpace(strings.Split(category, ":")[1])

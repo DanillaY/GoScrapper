@@ -80,7 +80,7 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 				Author:           CheckIfTheFieldExists(characteristicsBook, "Автор"),
 				Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
 				ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
-				Category:         CheckIfTheFieldExists(characteristicsBook, "Раздел"),
+				Category:         strings.ReplaceAll(CheckIfTheFieldExists(characteristicsBook, "Раздел"), ",", " "),
 				Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
 				ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
 				AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастное ограничение"),
