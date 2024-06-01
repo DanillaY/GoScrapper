@@ -100,7 +100,9 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 					BookAbout:     strings.TrimSpace(about),
 				}
 
-				r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
+				if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
+					r.Db.Create(&book)
+				}
 			}
 		})
 

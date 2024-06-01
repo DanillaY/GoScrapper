@@ -173,7 +173,10 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 					Weight:           weight,
 					BookAbout:        about,
 				}
-				r.Db.Where("page_book_path = ?", book.PageBookPath).FirstOrCreate(&book)
+
+				if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
+					r.Db.Create(&book)
+				}
 			}
 		}
 	})
