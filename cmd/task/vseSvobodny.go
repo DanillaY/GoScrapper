@@ -45,7 +45,8 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 			characteristicsBook := make(map[string]string)
 			about := h.DOM.Find("div.woocommerce-Tabs-panel--description").Text()
 
-			currPrice := strings.Join(regex.FindAllString(h.DOM.Find("p.price").Text(), -1), "")
+			mainPrice := h.DOM.Find("p.price").Find("span.woocommerce-Price-amount, amount").Text()
+			currPrice := strings.Join(regex.FindAllString(mainPrice, -1), "")
 
 			currPriceNumber := 0
 			if len(currPrice) > 0 {
