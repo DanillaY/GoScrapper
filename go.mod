@@ -5,6 +5,7 @@ go 1.21.4
 require (
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/jesse-rb/slogger-go v1.0.1
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
 
 require (
@@ -18,6 +19,7 @@ require (
 	github.com/stretchr/testify v1.8.3 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )
 
 require (

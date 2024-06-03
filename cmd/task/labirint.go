@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DanillaY/GoScrapper/cmd/models"
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
@@ -26,7 +25,7 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 		RandomDelay: 240 * time.Millisecond,
 	})
 
-	pageToScrape := "https://www.labirint.ru/books/"
+	pageToScrape := "https://www.labirint.ru/books/?available=1&preorder=1&wait=1&price_min=&price_max=&age_min=&age_max=&form-pubhouse=&id_genre=-1&paperbooks=1&otherbooks=1#catalog-navigation"
 	vendor := "https://www.labirint.ru"
 	regPages := regexp.MustCompile("Страниц: [0-9]+")
 	regYear := regexp.MustCompile("[0-9]+")
@@ -57,6 +56,7 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 		title := strings.TrimSpace(h.DOM.Find("h1").Text())
 		ageRestriction := h.DOM.Find("div#age_dopusk").Text()
 		about := h.DOM.Find("div#product-about p").Text()
+		stockText := UnifyStockType(SafeSplit(h.DOM.Find("div.prodtitle").Find("div.prodtitle-availibility, rang-expected span").Text(), " \n", 0))
 
 		imgPath := h.DOM.Find("img.book-img-cover,entered, loaded").AttrOr("data-src", "")
 		productionSeries := h.DOM.Find("div.series a").Text()
@@ -65,10 +65,10 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 		yearPublish := strings.Join(regYear.FindAllString(h.DOM.Find("div.publisher").Text(), -1), "")
 		pageQuantity := strings.Join(regPages.FindAllString(h.DOM.Find("div.pages2").Text(), -1), "")
 
-		pageQuantity = SafeSplit(pageQuantity, " ")
-		format := SafeSplit(h.DOM.Find("div.dimensions").Text(), " ")
-		weight := SafeSplit(h.DOM.Find("div.weight").Text(), " ")
-		isbn := SafeSplit(h.DOM.Find("div.isbn").Text(), " ")
+		pageQuantity = SafeSplit(pageQuantity, " ", 1)
+		format := SafeSplit(h.DOM.Find("div.dimensions").Text(), " ", 1)
+		weight := SafeSplit(h.DOM.Find("div.weight").Text(), " ", 1)
+		isbn := SafeSplit(h.DOM.Find("div.isbn").Text(), " ", 1)
 
 		h.DOM.Find("div.authors").Each(func(i int, s *goquery.Selection) {
 			authors := strings.Split(s.Text(), ":")
@@ -83,35 +83,19 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 			}
 		})
 
-		if errCurr == nil && title != "" && currPrice != 0 {
-
-			book := models.Book{
-				CurrentPrice:     currPrice,
-				OldPrice:         oldPrice,
-				Title:            title,
-				ImgPath:          imgPath,
-				PageBookPath:     vendor + h.Request.URL.Path,
-				VendorURL:        vendor,
-				Vendor:           "Лабиринт",
-				Author:           strings.TrimSpace(author),
-				Translator:       translator,
-				ProductionSeries: productionSeries,
-				Category:         catgeory,
-				Publisher:        publisher,
-				ISBN:             isbn,
-				AgeRestriction:   ageRestriction,
-				YearPublish:      yearPublish,
-				PagesQuantity:    pageQuantity,
-				Format:           format,
-				Weight:           weight,
-				BookAbout:        about,
-			}
-
-			if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
-				r.Db.Create(&book)
-			}
+		if errCurr == nil && title != "" && currPrice != 0 && stockText != "false" {
+			SaveBookAndNotifyUser(&r,
+				currPrice, oldPrice,
+				title, imgPath,
+				vendor+h.Request.URL.Path,
+				"https://www.labirint.ru", "Лабиринт",
+				author, translator,
+				productionSeries, catgeory,
+				publisher, isbn, ageRestriction,
+				yearPublish, pageQuantity,
+				format, weight,
+				stockText, about)
 		}
-
 	})
 
 	c.OnRequest(func(resp *colly.Request) {

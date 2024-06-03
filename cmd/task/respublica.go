@@ -19,7 +19,7 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 	c := colly.NewCollector(colly.Async(true))
 	c.SetRequestTimeout(time.Minute * 20)
 	c.Limit(&colly.LimitRule{
-		Parallelism: 20,
+		Parallelism: 15,
 		RandomDelay: 220 * time.Millisecond,
 	})
 	c.AllowURLRevisit = false
@@ -78,7 +78,7 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 
 	//Fill book data and save to db
 	c.OnHTML("html", func(h *colly.HTMLElement) {
-		title := strings.TrimSpace(h.DOM.Find("h1.text-2xl, font-medium, text-gray-700, pb-3").Text())
+		title := h.DOM.Find("div.about, bg-whit").Find("h1").Text()
 
 		if title != "" {
 			currPrice := priceTrim.Replace(h.DOM.Find("div.text-gray-700, font-medium, text-3xl").Text())
@@ -95,7 +95,7 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 			weight := ""
 
 			scriptsJs := h.DOM.Find("script").Text()
-			scriptsJs = SafeSplit(scriptsJs, "json_properties")[1:]
+			scriptsJs = SafeSplit(scriptsJs, "json_properties", 1)[1:]
 
 			jsonProductAttrs := strings.Split(scriptsJs, "}]}]")[0] + "}]}]"
 			jsonProductAttrs = replacerAttr.Replace(jsonProductAttrs)
@@ -171,10 +171,11 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 					PagesQuantity:    pagesQuantity,
 					BookCover:        bookCover,
 					Weight:           weight,
+					InStockText:      "В наличии",
 					BookAbout:        about,
 				}
 
-				if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
+				if r.Db.Model(&book).Preload("User").Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
 					r.Db.Create(&book)
 				}
 			}

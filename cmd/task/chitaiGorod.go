@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -9,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DanillaY/GoScrapper/cmd/models"
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
@@ -30,6 +28,7 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 	pageToScrape := "https://www.chitai-gorod.ru/catalog/books-18030?page=1"
 	vendor := "https://www.chitai-gorod.ru"
 	regex := regexp.MustCompile("[0-9]+")
+	replacer := strings.NewReplacer("\n", "", "\t", "", " ", "")
 
 	c.OnHTML("a.product-card__picture, product-card__row", func(h *colly.HTMLElement) {
 		if !strings.Contains(h.Request.URL.Path, "product") {
@@ -37,23 +36,31 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 		}
 	})
 
-	c.OnHTML("meta", func(h *colly.HTMLElement) {
-		if h.Attr("data-hid") == "og:url" && h.Attr("name") == "og:url" {
-			url := h.Attr("content")
-			urlParts := strings.Split(url, "=")
-
-			if len(urlParts) >= 2 {
-				pageNum, err := strconv.Atoi(urlParts[1])
-
-				if err != nil {
-					r.ErrLog.Log("chitaiGorod", "Error while parsing page number", err.Error())
-				} else {
-					fmt.Println(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
-					c.Visit(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
-				}
-			}
+	c.OnHTML("a.pagination__button", func(h *colly.HTMLElement) {
+		if strings.Contains(h.Request.URL.Path, "catalog") {
+			c.Visit(h.Request.AbsoluteURL(h.Attr("href")))
 		}
 	})
+
+	/*
+		c.OnHTML("meta", func(h *colly.HTMLElement) {
+			if h.Attr("data-hid") == "og:url" && h.Attr("name") == "og:url" {
+				url := h.Attr("content")
+				urlParts := strings.Split(url, "=")
+
+				if len(urlParts) >= 2 {
+					pageNum, err := strconv.Atoi(urlParts[1])
+
+					if err != nil {
+						r.ErrLog.Log("chitaiGorod", "Error while parsing page number", err.Error())
+					} else {
+						fmt.Println(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
+						c.Visit(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
+					}
+				}
+			}
+		})
+	*/
 
 	c.OnHTML("html", func(h *colly.HTMLElement) {
 
@@ -80,6 +87,7 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 			category = slices.Compact(category)
 
 			bookPath := h.Request.URL.String()
+			stockText := UnifyStockType(SafeSplit(replacer.Replace(h.DOM.Find("button.product-offer-button").Find("div.chg-app-button__content").Text()), "  ", 1))
 
 			characteristicsBook := make(map[string]string)
 
@@ -104,32 +112,18 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 			about = strings.Replace(about, "\t", "", -1)
 
 			if about != "" && currPrice != 0 && title != "" && bookPath != "" && len(category) > 1 {
-				book := models.Book{
-					CurrentPrice:     currPrice,
-					OldPrice:         oldPrice,
-					Title:            strings.TrimSpace(title),
-					ImgPath:          imgPath,
-					PageBookPath:     bookPath,
-					VendorURL:        vendor,
-					Vendor:           "Читай город",
-					Category:         strings.ReplaceAll(strings.Join(category[1:], " "), ",", " "),
-					Author:           author,
-					Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
-					ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
-					Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
-					ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
-					AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
-					YearPublish:      CheckIfTheFieldExists(characteristicsBook, "Год издания"),
-					PagesQuantity:    CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
-					BookCover:        CheckIfTheFieldExists(characteristicsBook, "Тип обложки"),
-					Format:           CheckIfTheFieldExists(characteristicsBook, "Размер"),
-					Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
-					BookAbout:        strings.TrimSpace(about),
-				}
-
-				if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
-					r.Db.Create(&book)
-				}
+				SaveBookAndNotifyUser(&r,
+					currPrice, oldPrice,
+					title, imgPath,
+					vendor+h.Request.URL.Path,
+					vendor, "Читай город",
+					author, CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
+					CheckIfTheFieldExists(characteristicsBook, "Серия"), strings.ReplaceAll(strings.Join(category[1:], " "), ",", " "),
+					CheckIfTheFieldExists(characteristicsBook, "Издательство"), CheckIfTheFieldExists(characteristicsBook, "ISBN"),
+					CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
+					CheckIfTheFieldExists(characteristicsBook, "Год издания"), "",
+					CheckIfTheFieldExists(characteristicsBook, "Размер"), CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
+					stockText, about)
 			}
 		}
 	})

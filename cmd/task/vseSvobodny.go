@@ -98,10 +98,11 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 					YearPublish:   CheckIfTheFieldExists(characteristicsBook, "Год"),
 					PagesQuantity: CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
 					BookCover:     CheckIfTheFieldExists(characteristicsBook, "Переплёт"),
+					InStockText:   "В наличии",
 					BookAbout:     strings.TrimSpace(about),
 				}
 
-				if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
+				if r.Db.Model(&book).Preload("User").Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
 					r.Db.Create(&book)
 				}
 			}

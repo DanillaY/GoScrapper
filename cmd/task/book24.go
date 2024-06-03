@@ -21,7 +21,7 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
-	pageToScrape := "https://book24.ru/catalog/"
+	pageToScrape := "https://book24.ru/catalog"
 	replacer := strings.NewReplacer("\n", "", "\t", "")
 	regex := regexp.MustCompile("[0-9]+")
 	vendor := "https://book24.ru"
@@ -31,6 +31,7 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 		characteristicsBook := make(map[string]string)
 
 		about := replacer.Replace(c.DOM.Find("div.product-about__text").Text())
+		stockText := UnifyStockType(strings.TrimSpace(c.DOM.Find("button._block, b24-btn b24-btn__content").Text()))
 
 		oldPrice := strings.TrimSpace(c.DOM.Find("span.product-sidebar-price__price-old").Text())
 		currPrice := strings.TrimSpace(c.DOM.Find("span.product-sidebar-price__price").Text())
@@ -67,7 +68,9 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 		numberCurrPrice, errCurr := strconv.Atoi(currPrice)
 		numberOldPrice, errOld := strconv.Atoi(oldPrice)
 
-		if imgPath != "" && errCurr == nil && errOld == nil && CheckIfTheFieldExists(characteristicsBook, "Автор") != "" {
+		if imgPath != "" &&
+			((errCurr == nil && errOld == nil) || stockText != "Добавить в корзину") &&
+			CheckIfTheFieldExists(characteristicsBook, "Автор") != "" {
 
 			book := models.Book{
 				CurrentPrice:     numberCurrPrice,
@@ -89,14 +92,30 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 				BookCover:        CheckIfTheFieldExists(characteristicsBook, "Переплет"),
 				Format:           CheckIfTheFieldExists(characteristicsBook, "Формат"),
 				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес"),
+				InStockText:      stockText,
 				BookAbout:        about,
 			}
 
-			if r.Db.Model(&book).Where("page_book_path = ?", book.PageBookPath).Updates(&book).RowsAffected == 0 {
-				r.Db.Create(&book)
+			if stockText == "Сообщить о поступлении" {
+				book.CurrentPrice = 0
+				book.OldPrice = 0
 			}
+
+			SaveBookAndNotifyUser(&r,
+				numberCurrPrice, numberOldPrice,
+				strings.TrimSpace(title), imgPath,
+				vendor+c.Request.URL.Path,
+				vendor, "Book24",
+				CheckIfTheFieldExists(characteristicsBook, "Автор"), CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
+				CheckIfTheFieldExists(characteristicsBook, "Серия"), strings.ReplaceAll(CheckIfTheFieldExists(characteristicsBook, "Раздел"), ",", " "),
+				CheckIfTheFieldExists(characteristicsBook, "Издательство"), CheckIfTheFieldExists(characteristicsBook, "ISBN"),
+				CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
+				CheckIfTheFieldExists(characteristicsBook, "Год издания"), CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
+				CheckIfTheFieldExists(characteristicsBook, "Размер"), CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
+				stockText, about)
 		}
 	})
+
 	c.OnHTML("div.product-card__image-holder", func(e *colly.HTMLElement) {
 		c.Visit(e.Request.AbsoluteURL((e.ChildAttr("a", "href"))))
 	})
