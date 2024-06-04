@@ -42,26 +42,6 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 		}
 	})
 
-	/*
-		c.OnHTML("meta", func(h *colly.HTMLElement) {
-			if h.Attr("data-hid") == "og:url" && h.Attr("name") == "og:url" {
-				url := h.Attr("content")
-				urlParts := strings.Split(url, "=")
-
-				if len(urlParts) >= 2 {
-					pageNum, err := strconv.Atoi(urlParts[1])
-
-					if err != nil {
-						r.ErrLog.Log("chitaiGorod", "Error while parsing page number", err.Error())
-					} else {
-						fmt.Println(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
-						c.Visit(urlParts[0] + "=" + strconv.Itoa(pageNum+1))
-					}
-				}
-			}
-		})
-	*/
-
 	c.OnHTML("html", func(h *colly.HTMLElement) {
 
 		if strings.Contains(h.Request.URL.String(), "product") {
@@ -110,6 +90,10 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 
 			about := strings.TrimSpace(h.DOM.Find("article.detail-description__text").Text())
 			about = strings.Replace(about, "\t", "", -1)
+			yearPublish, errYear := strconv.Atoi(CheckIfTheFieldExists(characteristicsBook, "Год издания"))
+			if errYear != nil {
+				yearPublish = 0
+			}
 
 			if about != "" && currPrice != 0 && title != "" && bookPath != "" && len(category) > 1 {
 				SaveBookAndNotifyUser(&r,
@@ -121,7 +105,7 @@ func ScrapeDataFromChitaiGorod(r repository.Repository, waitgroup *sync.WaitGrou
 					CheckIfTheFieldExists(characteristicsBook, "Серия"), strings.ReplaceAll(strings.Join(category[1:], " "), ",", " "),
 					CheckIfTheFieldExists(characteristicsBook, "Издательство"), CheckIfTheFieldExists(characteristicsBook, "ISBN"),
 					CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
-					CheckIfTheFieldExists(characteristicsBook, "Год издания"), "",
+					yearPublish, "",
 					CheckIfTheFieldExists(characteristicsBook, "Размер"), CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
 					stockText, about)
 			}

@@ -81,7 +81,7 @@ func SaveBookAndNotifyUser(
 	publisher string,
 	isbn string,
 	ageRestriction string,
-	yearPublish string,
+	yearPublish int,
 	pageQuantity string,
 	format string,
 	weight string,
@@ -135,7 +135,7 @@ func SaveBookAndNotifyUser(
 				"pages_quantity":    pageQuantity,
 				"book_cover":        format,
 				"weight":            weight,
-				"is_in_stock":       stockText,
+				"in_stock_text":     stockText,
 				"book_about":        about,
 			})
 	} else if err == nil {

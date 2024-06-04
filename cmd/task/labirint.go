@@ -62,7 +62,12 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 		productionSeries := h.DOM.Find("div.series a").Text()
 		catgeory := strings.ReplaceAll(h.DOM.Find("div.genre a").Text(), ",", " ")
 		publisher := h.DOM.Find("div.publisher a").Text()
-		yearPublish := strings.Join(regYear.FindAllString(h.DOM.Find("div.publisher").Text(), -1), "")
+		yearPublish, errYear := strconv.Atoi(strings.Join(regYear.FindAllString(h.DOM.Find("div.publisher").Text(), -1), ""))
+
+		if errYear != nil {
+			yearPublish = 0
+		}
+
 		pageQuantity := strings.Join(regPages.FindAllString(h.DOM.Find("div.pages2").Text(), -1), "")
 
 		pageQuantity = SafeSplit(pageQuantity, " ", 1)

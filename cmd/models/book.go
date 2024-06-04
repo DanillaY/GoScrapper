@@ -26,7 +26,7 @@ type Book struct {
 	Publisher        string
 	ISBN             string
 	AgeRestriction   string
-	YearPublish      string
+	YearPublish      int
 	PagesQuantity    string
 	BookCover        string
 	Format           string
@@ -40,7 +40,7 @@ func (b *Book) BeforeUpdate(tx *gorm.DB) error {
 
 	config, err := repository.GetConfigVariables()
 
-	if tx.Statement.Changed("is_in_stock") && err == nil && b.InStockText != "В наличии" {
+	if tx.Statement.Changed("in_stock_text") && err == nil && (b.InStockText != "Ожидается" && b.InStockText != "Нет в наличии") {
 		for _, user := range b.User {
 
 			fmt.Println("\n Зашел в бефор " +
@@ -55,7 +55,7 @@ func (b *Book) BeforeUpdate(tx *gorm.DB) error {
 			m.SetHeader("Subject", "NEW BOOK JUST DROPPED!!")
 			m.SetBody("text/plain", "A book that you added to the favorite just appeared! \n"+b.Title+" "+b.PageBookPath)
 
-			d := gomail.NewDialer("smtp.yandex.ru", 587, config.EMAIL_USERNAME, config.EMAIL_PASSWORD)
+			d := gomail.NewDialer(config.EMAIL_SMTP, config.EMAIL_SMTP_PORT, config.EMAIL_USERNAME, config.EMAIL_PASSWORD)
 			d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 			if err = d.DialAndSend(m); err != nil {

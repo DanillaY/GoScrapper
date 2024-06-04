@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DanillaY/GoScrapper/cmd/models"
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 
 	"github.com/PuerkitoBio/goquery"
@@ -67,40 +66,14 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 		})
 		numberCurrPrice, errCurr := strconv.Atoi(currPrice)
 		numberOldPrice, errOld := strconv.Atoi(oldPrice)
+		yearPublish, errYear := strconv.Atoi(CheckIfTheFieldExists(characteristicsBook, "Год издания"))
+		if errYear != nil {
+			yearPublish = 0
+		}
 
 		if imgPath != "" &&
 			((errCurr == nil && errOld == nil) || stockText != "Добавить в корзину") &&
 			CheckIfTheFieldExists(characteristicsBook, "Автор") != "" {
-
-			book := models.Book{
-				CurrentPrice:     numberCurrPrice,
-				OldPrice:         numberOldPrice,
-				Title:            strings.TrimSpace(title),
-				ImgPath:          imgPath,
-				PageBookPath:     vendor + c.Request.URL.Path,
-				VendorURL:        vendor,
-				Vendor:           "Book24",
-				Author:           CheckIfTheFieldExists(characteristicsBook, "Автор"),
-				Translator:       CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
-				ProductionSeries: CheckIfTheFieldExists(characteristicsBook, "Серия"),
-				Category:         strings.ReplaceAll(CheckIfTheFieldExists(characteristicsBook, "Раздел"), ",", " "),
-				Publisher:        CheckIfTheFieldExists(characteristicsBook, "Издательство"),
-				ISBN:             CheckIfTheFieldExists(characteristicsBook, "ISBN"),
-				AgeRestriction:   CheckIfTheFieldExists(characteristicsBook, "Возрастное ограничение"),
-				YearPublish:      CheckIfTheFieldExists(characteristicsBook, "Год издания"),
-				PagesQuantity:    CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
-				BookCover:        CheckIfTheFieldExists(characteristicsBook, "Переплет"),
-				Format:           CheckIfTheFieldExists(characteristicsBook, "Формат"),
-				Weight:           CheckIfTheFieldExists(characteristicsBook, "Вес"),
-				InStockText:      stockText,
-				BookAbout:        about,
-			}
-
-			if stockText == "Сообщить о поступлении" {
-				book.CurrentPrice = 0
-				book.OldPrice = 0
-			}
-
 			SaveBookAndNotifyUser(&r,
 				numberCurrPrice, numberOldPrice,
 				strings.TrimSpace(title), imgPath,
@@ -110,7 +83,7 @@ func ScrapeDataFromBook24(r repository.Repository, waitgroup *sync.WaitGroup) {
 				CheckIfTheFieldExists(characteristicsBook, "Серия"), strings.ReplaceAll(CheckIfTheFieldExists(characteristicsBook, "Раздел"), ",", " "),
 				CheckIfTheFieldExists(characteristicsBook, "Издательство"), CheckIfTheFieldExists(characteristicsBook, "ISBN"),
 				CheckIfTheFieldExists(characteristicsBook, "Возрастные ограничения"),
-				CheckIfTheFieldExists(characteristicsBook, "Год издания"), CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
+				yearPublish, CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
 				CheckIfTheFieldExists(characteristicsBook, "Размер"), CheckIfTheFieldExists(characteristicsBook, "Вес, г"),
 				stockText, about)
 		}

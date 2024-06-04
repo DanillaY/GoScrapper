@@ -90,7 +90,7 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 			series := ""
 			pagesQuantity := ""
 			ageRestriction := ""
-			yearPublished := ""
+			yearPublished := 0
 			bookCover := ""
 			weight := ""
 
@@ -116,7 +116,10 @@ func ScrapeDataFromRespulica(r repository.Repository, waitgroup *sync.WaitGroup)
 					case "Возрастные ограничения":
 						ageRestriction = item.Values[0].Title
 					case "Год издания":
-						yearPublished = item.Values[0].Title
+						yearPublished, err = strconv.Atoi(item.Values[0].Title)
+						if err != nil {
+							yearPublished = 0
+						}
 					case "Количество страниц":
 						pagesQuantity = item.Values[0].Title
 					case "Обложка":

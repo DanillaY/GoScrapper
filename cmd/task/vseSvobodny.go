@@ -82,6 +82,11 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 				}
 			})
 
+			yearPublish, errYear := strconv.Atoi(CheckIfTheFieldExists(characteristicsBook, "Год"))
+			if errYear != nil {
+				yearPublish = 0
+			}
+
 			if about != "" && currPriceNumber != 0 && title != "" {
 				book := models.Book{
 					CurrentPrice:  currPriceNumber,
@@ -92,10 +97,10 @@ func ScrapeDataFromVseSvobodny(r repository.Repository, waitgroup *sync.WaitGrou
 					VendorURL:     vendor,
 					Vendor:        "Все свободны",
 					Category:      category,
+					YearPublish:   yearPublish,
 					Author:        CheckIfTheFieldExists(characteristicsBook, "Автор"),
 					Translator:    CheckIfTheFieldExists(characteristicsBook, "Переводчик"),
 					Publisher:     CheckIfTheFieldExists(characteristicsBook, "Издательство"),
-					YearPublish:   CheckIfTheFieldExists(characteristicsBook, "Год"),
 					PagesQuantity: CheckIfTheFieldExists(characteristicsBook, "Количество страниц"),
 					BookCover:     CheckIfTheFieldExists(characteristicsBook, "Переплёт"),
 					InStockText:   "В наличии",
