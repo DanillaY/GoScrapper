@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -21,16 +22,18 @@ type Config struct {
 	EMAIL_SMTP_PORT int
 }
 
-func GetConfigVariables() (Config, error) {
+func GetConfigVariables() (*Config, error) {
 
 	errEnv := godotenv.Load("./db.env")
 	smtpPort, errPort := strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT"))
 
 	if errEnv != nil {
-		return Config{}, errEnv
+		fmt.Println("Error while loading env file")
+		return &Config{}, errEnv
 	}
 	if errPort != nil {
-		return Config{}, errPort
+		fmt.Println("GetConfig", "Error while parsing env smtp port")
+		return &Config{}, errPort
 	}
 
 	config := Config{
@@ -47,5 +50,5 @@ func GetConfigVariables() (Config, error) {
 		EMAIL_SMTP_PORT: smtpPort,
 	}
 
-	return config, nil
+	return &config, nil
 }

@@ -20,12 +20,14 @@ func main() {
 		errorLogger.Log("main", "Could not load env file", err)
 	}
 
-	db, err := repository.NewPostgresConnection(&config)
-	repo := repository.Repository{Db: db, Config: &config, InfLog: infoLogger, ErrLog: errorLogger}
+	if config.HOST != "" && config.DB_PORT != "" {
+		db, err := repository.NewPostgresConnection(config, errorLogger)
+		repo := repository.Repository{Db: db, Config: config, InfLog: infoLogger, ErrLog: errorLogger}
 
-	if err != nil {
-		errorLogger.Log("main", "Error while creating new connection with database", err.Error())
+		if err != nil {
+			errorLogger.Log("main", "Error while creating new connection with database", err.Error())
+		}
+
+		task.ScrapeAllWebsites(repo)
 	}
-
-	task.ScrapeAllWebsites(repo)
 }

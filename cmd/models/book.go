@@ -3,7 +3,6 @@ package models
 import (
 	"crypto/tls"
 	"fmt"
-	"strconv"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gopkg.in/gomail.v2"
@@ -42,11 +41,6 @@ func (b *Book) BeforeUpdate(tx *gorm.DB) error {
 
 	if tx.Statement.Changed("in_stock_text") && err == nil && (b.InStockText != "Ожидается" && b.InStockText != "Нет в наличии") {
 		for _, user := range b.User {
-
-			fmt.Println("\n Зашел в бефор " +
-				strconv.FormatBool(tx.Statement.Changed("is_in_stock")) +
-				strconv.Itoa(len(b.User)) + "\n" +
-				" test: " + b.InStockText)
 
 			m := gomail.NewMessage()
 
