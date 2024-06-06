@@ -59,7 +59,7 @@ func UnifyStockType(stockText string) string {
 	} else if stockText == "добавить в корзину" || stockText == "купить" || stockText == "на складе" {
 		result = "В наличии"
 	} else if stockText != "false" {
-		result = "Нет наличии"
+		result = "Нет в наличии"
 	}
 
 	return result
