@@ -58,23 +58,6 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 		about := h.DOM.Find("div#product-about p").Text()
 		stockText := UnifyStockType(SafeSplit(h.DOM.Find("div.prodtitle").Find("div.prodtitle-availibility, rang-expected span").Text(), " \n", 0))
 
-		imgPath := h.DOM.Find("img.book-img-cover,entered, loaded").AttrOr("data-src", "")
-		productionSeries := h.DOM.Find("div.series a").Text()
-		catgeory := strings.ReplaceAll(h.DOM.Find("div.genre a").Text(), ",", " ")
-		publisher := h.DOM.Find("div.publisher a").Text()
-		yearPublish, errYear := strconv.Atoi(strings.Join(regYear.FindAllString(h.DOM.Find("div.publisher").Text(), -1), ""))
-
-		if errYear != nil {
-			yearPublish = 0
-		}
-
-		pageQuantity := strings.Join(regPages.FindAllString(h.DOM.Find("div.pages2").Text(), -1), "")
-
-		pageQuantity = SafeSplit(pageQuantity, " ", 1)
-		format := SafeSplit(h.DOM.Find("div.dimensions").Text(), " ", 1)
-		weight := SafeSplit(h.DOM.Find("div.weight").Text(), " ", 1)
-		isbn := SafeSplit(h.DOM.Find("div.isbn").Text(), " ", 1)
-
 		h.DOM.Find("div.authors").Each(func(i int, s *goquery.Selection) {
 			authors := strings.Split(s.Text(), ":")
 
@@ -83,10 +66,27 @@ func ScrapeDataFromLabirint(r repository.Repository, waitgroup *sync.WaitGroup) 
 					author = authors[1]
 				}
 				if authors[0] == "Переводчик" {
-					translator = authors[1]
+					translator = strings.TrimSpace(authors[1])
 				}
 			}
 		})
+
+		imgPath := h.DOM.Find("img.book-img-cover,entered, loaded").AttrOr("data-src", "")
+		productionSeries := h.DOM.Find("div.series a").Text()
+		catgeory := strings.ReplaceAll(h.DOM.Find("div.genre a").Text(), ",", " ")
+		publisher := h.DOM.Find("div.publisher a").Text()
+		pageQuantity := strings.Join(regPages.FindAllString(h.DOM.Find("div.pages2").Text(), -1), "")
+		yearWithPublisher := h.DOM.Find("div.publisher").AfterHtml("a.analytics-click-js").Text()
+		yearPublish, errYear := strconv.Atoi(strings.Join(regYear.FindAllString(yearWithPublisher[strings.LastIndex(yearWithPublisher, ",")+1:], -1), ""))
+
+		if errYear != nil {
+			yearPublish = 0
+		}
+
+		pageQuantity = SafeSplit(pageQuantity, " ", 1)
+		format := SafeSplit(h.DOM.Find("div.dimensions").Text(), " ", 1)
+		weight := SafeSplit(h.DOM.Find("div.weight").Text(), " ", 1)
+		isbn := SafeSplit(h.DOM.Find("div.isbn").Text(), " ", 1)
 
 		if errCurr == nil && title != "" && currPrice != 0 && stockText != "false" {
 			SaveBookAndNotifyUser(&r,
